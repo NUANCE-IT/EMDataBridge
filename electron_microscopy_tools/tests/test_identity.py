@@ -84,6 +84,8 @@ def test_imports_a_nuscope_03_key(homes):
     info = {"name": "Ada Lovelace", "orcid": "https://orcid.org/0000-0002-1825-0097", "public_key": pub,
             "fingerprint": idn.fingerprint(pub), "created": "2026-10-13"}
     (kd / "nuscope_ed25519.pub.json").write_text(json.dumps(info))
+    assert idn.me() is None              # a custom EMDATABRIDGE_HOME never imports implicitly
+    assert idn.import_legacy().fingerprint == info["fingerprint"]
     me = idn.me()
     assert me.fingerprint == info["fingerprint"] and (kd / "nuscope_ed25519.pem").exists()
     assert idn.verify({"seal": "s"}, idn.sign({"seal": "s"})).trusted

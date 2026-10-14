@@ -13,6 +13,8 @@ or approved it and prove it with a signature.
   your key; ``verify(claims, entry)`` checks a signature from anyone.
 * ``trust()`` adds someone's public key to your trusted list; your own key is
   trusted automatically.
+* Keys made by NUScope 0.3 (``~/.nuscope/keys``) are imported on first use of
+  the default location; the originals are left in place.
 
 The module needs only the standard library and ``cryptography``.
 
@@ -192,8 +194,12 @@ def import_legacy() -> Optional[Identity]:
 
 
 def me() -> Optional[Identity]:
-    """Your identity, or None if you have not created one."""
-    if not (key_dir() / KEY_FILE).exists():
+    """Your identity, or None if you have not created one.
+
+    With the default location, a key made by NUScope 0.3 is imported on first use. A custom
+    ``EMDATABRIDGE_HOME`` (tests, demos, a shared instrument PC) never picks up a personal key
+    implicitly; call :func:`import_legacy` to do that on purpose."""
+    if "EMDATABRIDGE_HOME" not in os.environ and not (key_dir() / KEY_FILE).exists():
         import_legacy()
     p = key_dir() / PUB_FILE
     if not (p.exists() and (key_dir() / KEY_FILE).exists()):
