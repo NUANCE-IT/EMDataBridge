@@ -1,20 +1,48 @@
-# EMDataBridge v0.0.1
+# EMDataBridge
 
-A bridge between electron microscopy data formats with standardization, translation, and discovery capabilities:
+A bridge between electron microscopy data formats, and the researcher identity shared by the NUANCE tools.
 
-1. **Format Standardizer**: Standardize various electron microscopy data formats to a common schema
-2. **Format Translator**: Convert between different electron microscopy data formats
-3. **Metadata Discovery**: Automatically discover and extract self-describing data organization from electron microscopy files
+Created by **Roberto dos Reis ([@rmsreis](https://github.com/rmsreis))** · NUANCE Center, Northwestern University
+
+1. **Identity**: ORCID-validated researcher identity with an Ed25519 signing key. NUScope, NUScope-TOMO and
+   NUANCE-MCP use it to sign data, so a file can prove who acquired, processed or approved it
+2. **Format Standardizer**: Standardize various electron microscopy data formats to a common schema
+3. **Format Translator**: Convert between different electron microscopy data formats
+4. **Metadata Discovery**: Automatically discover and extract self-describing data organization from electron microscopy files
 
 ## Installation
 
 ```bash
-# From PyPI (coming soon)
-pip install EMDataBridge
-
-# From source
-pip install .
+pip install EMDataBridge                 # identity layer (light: numpy, pyyaml, cryptography)
+pip install "EMDataBridge[tools,io]"     # + standardize / translate / discover
+pip install "EMDataBridge[all]"          # + transformers and HyperSpy
 ```
+
+## Identity: ORCID and signing key
+
+```bash
+emdb identity create "Your Name" --orcid 0000-0002-1825-0097   # once; the ORCID check digit is validated
+emdb identity show
+emdb identity export me.json          # public part only: share it with collaborators or the facility
+emdb identity trust colleague.json    # trust someone else's key
+emdb identity list
+emdb identity check-orcid 0000-0002-1825-0097
+```
+
+```python
+from EMDataBridge import identity
+
+me = identity.me()                                    # name, ORCID, key fingerprint
+entry = identity.sign({"seal": "<sha256>"}, role="author")
+identity.verify({"seal": "<sha256>"}, entry)          # Check(valid=True, trusted=True, signer={...})
+```
+
+- The private key is stored in `~/.emdatabridge/identity/` (or `$EMDATABRIDGE_HOME`), readable only by you. Set
+  `EMDATABRIDGE_KEY_PASSPHRASE` to keep it encrypted. Back it up: a lost key cannot sign again, but everything it
+  signed stays verifiable, because each signature carries the public key.
+- A signature covers the signed claims and the signer record (name, ORCID, key fingerprint, role, time), so
+  none of them can be changed afterwards.
+- Keys created by NUScope 0.3 (`~/.nuscope/keys`) are imported automatically on first use. The originals are left in place.
 
 ## Usage
 

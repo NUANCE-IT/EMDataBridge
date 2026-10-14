@@ -1,0 +1,52 @@
+# Publishes EMDataBridge to PyPI when a version tag (v0.1.0, ...) is pushed.
+# Uses PyPI trusted publishing (OpenID Connect): no API token is stored anywhere.
+# One-time setup on pypi.org -> Account -> Publishing -> "Add a pending publisher":
+#   project EMDataBridge, owner NUANCE-IT, repository EMDataBridge,
+#   workflow release.yml, environment pypi
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+defaults:
+  run:
+    working-directory: electron_microscopy_tools
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test
+        run: |
+          pip install -e ".[dev,tools]"
+          pytest -q
+      - name: Tag matches package version
+        run: |
+          v=$(python -c "import EMDataBridge; print(EMDataBridge.__version__)")
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != version $v"; exit 1; }
+      - name: Build and check
+        run: |
+          python -m build
+          twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: electron_microscopy_tools/dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

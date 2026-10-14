@@ -1,6 +1,60 @@
 [build-system]
-requires = ["setuptools>=61.0","wheel","setuptools_scm"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools_scm]
-write_to = "EMDataBridge/_version.py"
+[project]
+name = "EMDataBridge"
+dynamic = ["version"]
+description = "Electron-microscopy data formats (standardize, translate, discover) and the shared researcher identity (ORCID, signing keys) for the NUANCE tools"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Roberto dos Reis", email = "roberto.reis@northwestern.edu" }]
+keywords = ["electron microscopy", "metadata", "ORCID", "provenance", "digital signature", "file formats", "NUANCE"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Security :: Cryptography",
+]
+requires-python = ">=3.10"
+# The core is the identity layer: light enough to be a dependency of every NUANCE tool.
+dependencies = [
+  "numpy>=1.20",
+  "pyyaml>=6.0",
+  "cryptography>=42",
+]
+
+[project.optional-dependencies]
+# standardize / translate / discover
+tools = [
+  "scipy>=1.7", "pandas>=1.3", "pillow>=9.0", "jsonschema>=4.4", "xmltodict>=0.13",
+  "scikit-learn>=1.0", "tqdm>=4.62", "click>=8.0", "networkx>=2.6", "matplotlib>=3.3",
+]
+io = ["mrcfile>=1.3", "h5py>=3.6", "zarr>=2.11"]
+ml = ["transformers>=4.18", "hyperspy>=1.7"]
+dev = ["pytest>=7.0", "build", "twine"]
+all = ["EMDataBridge[tools,io,ml]"]
+
+[project.scripts]
+emdb = "EMDataBridge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/NUANCE-IT/EMDataBridge"
+Source = "https://github.com/NUANCE-IT/EMDataBridge"
+Issues = "https://github.com/NUANCE-IT/EMDataBridge/issues"
+
+[tool.setuptools]
+packages = ["EMDataBridge"]
+
+[tool.setuptools.dynamic]
+version = { attr = "EMDataBridge.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
