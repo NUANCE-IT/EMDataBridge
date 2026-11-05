@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
       - name: Test
         run: |
-          pip install -e ".[dev,tools]"
+          pip install -e ".[dev,tools,io]"
           pytest -q
       - name: Tag matches package version
         run: |

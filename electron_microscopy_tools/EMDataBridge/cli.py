@@ -33,6 +33,7 @@ def main():
           
           # Discover data organization in a directory of EM files
           emdb discover /path/to/data -o report.md
+          emdb formats
 
           # Create your identity (ORCID + signing key), used by NUScope, NUScope-TOMO and NUANCE-MCP
           emdb identity create "Your Name" --orcid 0000-0000-0000-0000
@@ -47,16 +48,18 @@ def main():
     standardize_parser.add_argument('--output', '-o', help='Output file for standardized metadata')
     standardize_parser.add_argument('--format', '-f', choices=['json', 'yaml'], default='json',
                                   help='Output format for metadata')
-    standardize_parser.add_argument('--model', '-m', default='bert-base-uncased',
-                                  help='LLM model to use for metadata extraction')
+    standardize_parser.add_argument('--model', '-m', default='bert-base-uncased', help=argparse.SUPPRESS)
+    standardize_parser.add_argument('--llm', choices=['none', 'mock', 'llama'], default='none',
+                       help='Optional language model to fill fields the explicit mapping misses (default: none)')
     
     # Translator subcommand
     translate_parser = subparsers.add_parser('translate', help='Translate between EM data formats')
     translate_parser.add_argument('input_file', help='Input electron microscopy data file')
     translate_parser.add_argument('output_file', help='Output file path')
     translate_parser.add_argument('--format', '-f', help='Output format (if not specified, inferred from output file extension)')
-    translate_parser.add_argument('--model', '-m', default='bert-base-uncased',
-                                help='LLM model to use for metadata mapping')
+    translate_parser.add_argument('--model', '-m', default='bert-base-uncased', help=argparse.SUPPRESS)
+    translate_parser.add_argument('--llm', choices=['none', 'mock', 'llama'], default='none',
+                       help='Optional language model to fill fields the explicit mapping misses (default: none)')
     translate_parser.add_argument('--list-formats', '-l', action='store_true',
                                 help='List supported formats and exit')
     translate_parser.add_argument('--batch', '-b', action='store_true',
@@ -78,6 +81,8 @@ def main():
                                help='LLM model to use for metadata analysis')
     
     # Identity subcommand
+    subparsers.add_parser('formats', help='List every format and what is supported: read, write or planned')
+
     id_parser = subparsers.add_parser('identity', help='Your ORCID identity and signing key')
     id_sub = id_parser.add_subparsers(dest='id_command', required=True)
     p = id_sub.add_parser('create', help='Create your identity and Ed25519 signing key')
@@ -110,6 +115,8 @@ def main():
             return translate_command(args)
         elif args.command == 'discover':
             return discover_command(args)
+        elif args.command == 'formats':
+            return formats_command()
         elif args.command == 'identity':
             return identity_command(args)
         else:
@@ -155,11 +162,21 @@ def identity_command(args):
     return 0
 
 
+def formats_command():
+    """List the formats and their status."""
+    from . import formats
+    for fmt in formats.FORMATS:
+        print(f"{fmt.name:<28} {fmt.status:<12} {' '.join(fmt.extensions)}")
+        if fmt.note and fmt.note != "Planned":
+            print(f"{'':<28} {fmt.note}")
+    return 0
+
+
 def standardize_command(args):
     """Execute the standardize command."""
     from .standardizer import EMDataStandardizer
     # Create standardizer
-    standardizer = EMDataStandardizer(llm_model_name=args.model)
+    standardizer = EMDataStandardizer(llm_model_name=args.model, llm_backend=args.llm)
     
     # Standardize the input file
     standardized = standardizer.standardize(args.input_file)
@@ -167,7 +184,8 @@ def standardize_command(args):
     # Print summary
     print(f"Standardized {args.input_file}")
     print(f"Original format: {standardized['original_format']}")
-    print(f"Image dimensions: {standardized['data'].shape}")
+    sig = standardized['metadata'].get('signal', {})
+    print(f"Data: {sig.get('kind', '')} {standardized['data'].shape} {sig.get('dtype', standardized['data'].dtype)}")
     
     # Save metadata if output file specified
     if args.output:
@@ -177,10 +195,11 @@ def standardize_command(args):
         # Print metadata to console
         import json
         import yaml
+        plain = json.loads(json.dumps(standardized['metadata'], default=str))
         if args.format == 'json':
-            print(json.dumps(standardized['metadata'], indent=2))
+            print(json.dumps(plain, indent=2))
         else:
-            print(yaml.dump(standardized['metadata']))
+            print(yaml.safe_dump(plain, sort_keys=False, allow_unicode=True))
     
     return 0
 
@@ -189,20 +208,12 @@ def translate_command(args):
     """Execute the translate command."""
     from .translator import EMFormatTranslator
     # Create translator
-    translator = EMFormatTranslator(llm_model_name=args.model)
+    translator = EMFormatTranslator(llm_model_name=args.model, llm_backend=args.llm)
     
     # List formats if requested
     if args.list_formats:
-        formats = translator.list_supported_formats()
-        print("Supported formats:")
-        for fmt in formats:
-            print(f"\n{fmt['name']} ({', '.join(fmt['extensions'])})")
-            print(f"  Description: {fmt['description']}")
-            print(f"  Libraries: {', '.join(fmt['libraries'])}")
-            print(f"  Metadata support: {fmt['metadata_support']}")
-            print(f"  Typical use: {fmt['typical_use']}")
-        return 0
-    
+        return formats_command()
+
     if args.batch:
         # Batch mode
         if not args.format:

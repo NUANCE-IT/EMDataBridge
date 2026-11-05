@@ -11,7 +11,7 @@ The format tools load lazily, so ``from EMDataBridge import identity`` stays
 light (standard library and ``cryptography`` only).
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Roberto dos Reis"
 __email__ = "robertomsreis@gmail.com"
 __url__ = "https://github.com/NUANCE-IT/EMDataBridge"

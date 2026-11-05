@@ -17,11 +17,6 @@ from typing import Dict, Any, Union, List, Optional, Tuple, Set
 from collections import defaultdict
 # Lazy-transformers import to avoid requiring heavy ML deps at package import
 _TRANSFORMERS_AVAILABLE = False
-try:
-    import transformers  # type: ignore
-    _TRANSFORMERS_AVAILABLE = True
-except Exception:
-    _TRANSFORMERS_AVAILABLE = False
 import networkx as nx
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
@@ -41,7 +36,7 @@ class EMDataDiscovery:
     extract metadata patterns, and infer relationships between files.
     """
     
-    def __init__(self, llm_model_name: str = "t5-small", llm_backend: str = "auto", llm_model_path: str | None = None):
+    def __init__(self, llm_model_name: str = "t5-small", llm_backend: str = "none", llm_model_path: str | None = None):
         """
         Initialize the discovery tool with an optional LLM model for metadata analysis.
         
@@ -84,10 +79,7 @@ class EMDataDiscovery:
             files = list(directory.glob(file_pattern))
         
         # Filter for known file extensions
-        supported_extensions = set(ext.lower() for ext in [
-            ".mrc", ".map", ".rec", ".em", ".dm3", ".dm4", 
-            ".tif", ".tiff", ".h5", ".hdf5", ".ser", ".emd"
-        ])
+        supported_extensions = set(self.standardizer.supported_formats)
         
         em_files = [f for f in files if f.suffix.lower() in supported_extensions]
         
@@ -155,6 +147,8 @@ class EMDataDiscovery:
             def process_metadata(data, prefix=""):
                 if isinstance(data, dict):
                     for key, value in data.items():
+                        if str(key).startswith("_"):      # bookkeeping (_source, _llm_provenance), not data
+                            continue
                         full_key = f"{prefix}.{key}" if prefix else key
                         
                         if value is not None:
