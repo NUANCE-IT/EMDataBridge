@@ -9,7 +9,7 @@ to evaluate the performance of the electron microscopy tools.
 
 import os
 from pathlib import Path
-from benchmark import EMBenchmark
+from EMDataBridge.benchmark import EMBenchmark
 
 
 def run_sample_benchmarks():
